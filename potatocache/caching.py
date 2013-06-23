@@ -29,6 +29,10 @@ def cached(
     return _decorator
 
 
+def expire_group(*group_names):
+    pass
+
+
 def _inc_call_count(func):
     if not hasattr(func, 'call_count'):
         setattr(func, 'call_count', 1)
