@@ -12,8 +12,10 @@ def cached(
     def _decorator(func):
         @wraps(func)
         def wrapper(*a, **kw):
+            assert bool(key) != bool(arg_key), "You need to provide a key or an arg_key"
+            _key = arg_key % a if key is None else key
             # Check existing values in memcache
-            value = cache.get(key)
+            value = cache.get(_key)
             if value is None:
                 if debug:
                     _inc_call_count(wrapper)
@@ -23,7 +25,7 @@ def cached(
                     #TODO: Handle None values somehow
                     return None
 
-                cache.set(key, value)
+                cache.set(_key, value)
             return value
         return wrapper
     return _decorator
