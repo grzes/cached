@@ -27,7 +27,7 @@ Let's go through a detailed example. In a blogging app you might want to cache s
     ('author_details', 'doctest')
 
 It's fairly obvious how it will work. The debug=True, results in annotating the function with the number of calls:
-    >>> john = Author(name='John')
+    >>> john = Author(1, name='John')
     >>> author_details(john)
     {'name': 'John'}
     >>> author_details.call_count
@@ -48,7 +48,7 @@ argument, which allows formating the cache key using the function's arguments:
     ...     comment = _comments[comment_id]  # it's like a database call!
     ...     return (comment.text, comment.author.name)
 
-    >>> bob = Author(name='Bob')
+    >>> bob = Author(2, name='Bob')
     >>> _comments = {1: Comment(id=1, text='text1', author=john), 2: Comment(id=2, text='text2', author=bob)}
     >>> comment_details(1), comment_details(2)
     (('text1', 'John'), ('text2', 'Bob'))
@@ -60,7 +60,7 @@ the cache for both comment_details and author_details:
 
     >>> expire_group('author1_data')
     >>> (comment_details(1), author_details(john)) and comment_details.call_count, author_details.call_count
-    3, 2
+    (3, 2)
 
 
 Fixed `key` vs `arg_key`
@@ -79,9 +79,9 @@ for key generation:
             }
         return _cached_post(post, last_comment)
 
-You probably noticed the post_details function above is broken, it's using the 'author1_data' group regardless of who
-the post's author is. Let's rewrite it using an inner cached function:
-This example is a bit of a stretch, because it assumes you already know the user_id, but it's just an example, ok?
+You probably noticed the comment_details and author_details functions above are broken, they're using the 'author1_data'
+group regardless of who the comment's author is. Let's rewrite them using an inner cached function:
+(This example is a bit of a stretch, because it assumes you already know the user_id, but it's just an example, ok?)
 #TODO: we need better examples.
 
     >>> def cached_comment(comment_id, author_id):
@@ -91,10 +91,17 @@ This example is a bit of a stretch, because it assumes you already know the user
     ...         return (comment.text, comment.author.name)
     ...     return _cached_comment(comment_id, author_id)
 
-Fetch everything again so it's recached. We can then expire the author1_data and see that keys in that group will hit the
+    >>> def author_details(author):
+    ...     @cached(key='author:%s' % author.id, groups=['author%s_data' % author.id])
+    ...     def _author_details(author):
+    ...        return {'name': author.name}
+    ...     return _author_details(author)
+
+Fetch everything again so it's recached. We can then expire the author1_data and see that keys in that group will return
+fresh data, while keys in author2_data - won't.
 
     >>> cached_comment(1, 1), cached_comment(2, 2), author_details(john), author_details(bob)  # doctest:+ELLIPSIS
-    ...
+    (...
 
 Now since the inner function is redefined on every call we can't rely on call_counts and will instead examine the data
 to verify that group expiration correctly separates the values. First we update our data:
@@ -104,13 +111,16 @@ to verify that group expiration correctly separates the values. First we update 
 Every cached function returns the old data:
 
     >>> cached_comment(1, 1), author_details(john), cached_comment(2, 2), author_details(bob)
-    ('text1', 'John'), {'name': 'John'}, ('text2', 'Bob'), {'name': 'Bob'}
+    (('text1', 'John'), {'name': 'John'}, ('text2', 'Bob'), {'name': 'Bob'})
 
 After expiring the author1_data group, keys belonging to that group will be reevaluated:
 
     >>> expire_group('author1_data')
     >>> cached_comment(1, 1), author_details(john), cached_comment(2, 2), author_details(bob)
-    ('text1', 'John2'), {'name': 'John2'}, ('text2', 'Bob'), {'name': 'Bob'}
+    (('text1', 'John2'), {'name': 'John2'}, ('text2', 'Bob'), {'name': 'Bob'})
+
+
+We can have a key belonging to many groups, and as soon as anyone of them is invlidated, the key's cached value becomes stale.
 
 
 Existing solutions
@@ -150,8 +160,11 @@ Both aren't actively maintained, although the second looks slightly more lively
 
 """
 from potatocache import cached, expire_group
+
 class Author(object):
-    def __init__(self, name): self.name = name
+    def __init__(self, id, name):
+        self.id, self.name = id, name
+
 class Comment(object):
     def __init__(self, id, text, author):
         self.id, self.text, self.author = id, text, author
