@@ -113,6 +113,41 @@ After expiring the author1_data group, keys belonging to that group will be reev
     ('text1', 'John2'), {'name': 'John2'}, ('text2', 'Bob'), {'name': 'Bob'}
 
 
+Existing solutions
+------------------
+
+This comparison (https://www.djangopackages.com/grids/g/caching/) evaluates different caching utilities. It singles
+out two packages that support memcache-tagging:
+
+
+https://bitbucket.org/evotech/cache-tagging
+
+This one is really close to this implementation, has the advantage of matching the Django cache backend api. This
+api compatibility comes with a cost: First; It takes two separate cache queries for the main value and tag values.
+Second; Since the api provides separate set/get functions it stores new tag values (invalidates them) based on
+what was previously fetched in threadlocals (instead of leaving current values fetched from cache).
+
+It does however have funky transaction support, and updated template caching tags.
+
+https://bitbucket.org/kmike/django-cache-utils
+
+This has the same problems: Makes several trips to memcache. Additionally it takes a weird approach to building cache keys
+for instance methods, it ignores the instance. It's invalidate method looks broken (cached by `func_type()`, but
+invalidates explicitly by 'function')
+
+It looks like a good candidate to fork and fix, but again it's compatibility with the backend api makes what
+we're trying to do here a little akward.
+
+It does have a nice CACHE_MINT feature, keeping stale objects in cache while they're regenerated - but the whole point
+of exact invalidation is to allow the values to get naturally evicted from memcache, or explicitly invalidated.
+
+The author started working on a simplified version, which addresses some of these issues, but drops the taging support
+completely.
+
+Both aren't actively maintained, although the second looks slightly more lively
+
+
+
 """
 from potatocache import cached, expire_group
 from collections import namedtuple

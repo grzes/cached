@@ -14,6 +14,8 @@ def cached(
         def wrapper(*a, **kw):
             assert bool(key) != bool(arg_key), "You need to provide a key or an arg_key"
             _key = arg_key % a if key is None else key
+
+
             # Check existing values in memcache
             value = cache.get(_key)
             if value is None:
