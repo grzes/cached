@@ -85,11 +85,11 @@ This example is a bit of a stretch, because it assumes you already know the user
 #TODO: we need better examples.
 
     >>> def cached_comment(comment_id, author_id):
-    ... @cached(key='comment:%s' % post_id, groups=['author%s_data' % author_id])
-    ... def _cached_comment(comment_id, author_id):
-    ...     comment = _comments[comment_id]  # it's like a database call!
-    ...     return (comment.text, comment.author.name)
-    ... return _cached_comment(comment_id, author_id)
+    ...     @cached(key='comment:%s' % comment_id, groups=['author%s_data' % author_id])
+    ...     def _cached_comment(comment_id, author_id):
+    ...         comment = _comments[comment_id]  # it's like a database call!
+    ...         return (comment.text, comment.author.name)
+    ...     return _cached_comment(comment_id, author_id)
 
 Fetch everything again so it's recached. We can then expire the author1_data and see that keys in that group will hit the
 
@@ -150,6 +150,8 @@ Both aren't actively maintained, although the second looks slightly more lively
 
 """
 from potatocache import cached, expire_group
-from collections import namedtuple
-Author = namedtuple('Author', 'name')
-Comment = namedtuple('Comment', 'id author text')
+class Author(object):
+    def __init__(self, name): self.name = name
+class Comment(object):
+    def __init__(self, id, text, author):
+        self.id, self.text, self.author = id, text, author
