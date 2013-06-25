@@ -13,6 +13,16 @@ When you update the Author you should invalidate both the Authors cache and each
 in a single call to memcache if all your cached values were sharing a group name.
 
 
+How it works?
+-------------
+
+The technique is apparently called 'memcache-tagging'. The basic idea is to tag a memcached key/value with a tag, allowing
+expiration of several keys tagged with the same tag. One approach is to simply incorporate the tag value in the key.
+First you ask memcache for the current tag value and then, instead of asking for '<key>', you ask for '<tag_value>-<key>'.
+Another approach is to store the tag value alongside the cached value, fetch them both at once with `memcache.get_multi`
+and check if the tag value matches.
+
+
 Group keys - A simple detailed example!
 ---------------------------------------
 
