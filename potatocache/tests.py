@@ -169,7 +169,9 @@ Both aren't actively maintained, although the second looks slightly more lively
 
 
 """
+import unittest, doctest
 from potatocache import cached, expire_group
+from django.test import TestCase
 
 class Author(object):
     def __init__(self, id, name):
@@ -178,3 +180,15 @@ class Author(object):
 class Comment(object):
     def __init__(self, id, text, author):
         self.id, self.text, self.author = id, text, author
+
+
+def load_tests(loader, tests, ignore):
+    tests.addTests(doctest.DocTestSuite('potatocache.tests'))
+    return tests
+
+
+def suite():
+    suite = unittest.TestSuite()
+    suite.addTest(doctest.DocTestSuite('potatocache.tests'))
+    return suite
+
